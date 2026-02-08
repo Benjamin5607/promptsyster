@@ -2,12 +2,13 @@
 /* [1] 전역 설정 및 상태 관리                                                 */
 /* -------------------------------------------------------------------------- */
 
+// 🔥 요청하신 대로 롤 복구 + PM 교체 완료
 const roles = [
     { id: "TeamManager", label: "Team Manager", icon: "fa-users" },
     { id: "HRBP", label: "HRBP", icon: "fa-user-tie" },
     { id: "QualityManager", label: "Quality Manager", icon: "fa-check-double" },
     { id: "OpsManager", label: "Ops Manager", icon: "fa-gears" },
-    { id: "ProductManager", label: "Product Manager", icon: "fa-clipboard-list" },
+    { id: "ProjectImplManager", label: "Project Impl. Manager", icon: "fa-diagram-project" }, // 교체됨
     { id: "WorkflowManager", label: "Workflow Manager", icon: "fa-share-nodes" },
     { id: "CapacityPlanning", label: "Capacity Planner", icon: "fa-chart-pie" },
     { id: "BudgetWorkforce", label: "Budget & Workforce", icon: "fa-money-bill-trend-up" }
@@ -17,7 +18,7 @@ let state = {
     step: 1, role: null, task: null, 
     personas: [], selectedPersona: null, chatMessages: [], 
     latestPrompt: "", latestSimulation: "",
-    progress: 0 // 진행률 (0~100)
+    progress: 0
 };
 
 /* -------------------------------------------------------------------------- */
@@ -37,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('backToStep1').addEventListener('click', () => goToStep(1));
     document.getElementById('backToStep2').addEventListener('click', () => goToStep(2));
     
-    document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+    document.getElementById('sendMessageBtn').addEventListener('click', () => sendMessage());
     document.getElementById('chatInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -82,7 +83,7 @@ function goToStep(step) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [4] 페르소나 생성 (Meta-Prompting: The Option Generator)                   */
+/* [4] 페르소나 생성 (T&S Context Preserved)                                  */
 /* -------------------------------------------------------------------------- */
 
 async function generatePersonas() {
@@ -93,25 +94,26 @@ async function generatePersonas() {
     goToStep(3);
     document.getElementById('loader').classList.remove('hidden');
 
-    // 🔥 핵심: AI에게 "객관식 옵션을 파이프(||)로 구분해서 달라"고 지시
+    // T&S 맥락은 유지하되, 선택한 롤에 맞춰서 작동하도록 설정
     const prompt = `
-    Meta-Prompt Engineer Task.
+    You are a Trust & Safety Prompt Architect.
     User Role: ${state.role.label}
     User Goal: ${state.task}
 
-    Create 3 personas that act as a "Guided Form Wizard".
-    Instead of open-ended chat, they must provide **Smart Suggestions** (clickable options) for every question.
-
-    Format Constraint for Personas:
-    - End every question with suggested options in this format: ||Option 1||Option 2||Option 3||
+    Create 3 personas acting as a "Guided Form Wizard".
+    Their goal is to build a robust prompt for Content Moderation, Policy, or Safety Implementation.
+    
+    Constraint:
+    - Ask ONE question at a time.
+    - Provide **Smart Suggestions** in this format: ||Option 1||Option 2||Option 3||
 
     Output JSON Only:
     [
         {
             "title": "Persona Name",
-            "description": "How they guide (e.g. Focused on Quality)",
-            "system_instruction": "You are [Persona]. Build a prompt for '${state.task}'.\nSteps: Context -> Audience -> Output Format -> Constraints.\n\nRULE: Ask ONE question at a time. ALWAYS provide 3-4 suggestions at the end of your message using ||Option|| format.",
-            "first_message": "Let's start with the **Context**. Why are we doing this task?\n\n||Routine Weekly Report||Project Post-Mortem||New Initiative Launch||Performance Improvement Plan||"
+            "description": "Strategy description",
+            "system_instruction": "You are [Persona]. Build a prompt for '${state.task}'. Ask ONE question at a time. ALWAYS provide 3-4 suggestions using ||Option|| format.",
+            "first_message": "Let's define the **Scope**. What specific area of Trust & Safety is this for?\n\n||Harassment Policy||Fraud Detection||Child Safety||Misinformation||"
         }
     ]
     `;
@@ -123,7 +125,7 @@ async function generatePersonas() {
         renderPersonas();
     } catch (e) {
         console.error(e);
-        alert("Failed. Check Key.");
+        alert("Failed. Check API Key/Quota.");
         goToStep(2);
     } finally {
         document.getElementById('loader').classList.add('hidden');
@@ -156,7 +158,6 @@ function startChat(idx) {
     state.selectedPersona = state.personas[idx];
     goToStep(4);
     
-    // 진행바 초기화
     state.progress = 10;
     updateProgressBar();
 
@@ -169,7 +170,6 @@ function startChat(idx) {
     ];
     document.getElementById('chatHistory').innerHTML = '';
     
-    // 첫 메시지 처리 (옵션 파싱 포함)
     processIncomingMessage(state.selectedPersona.first_message);
     state.chatMessages.push({ role: "assistant", content: state.selectedPersona.first_message });
 }
@@ -180,10 +180,11 @@ async function sendMessage(manualText = null) {
     if (!text) return;
 
     input.value = '';
+    input.placeholder = "Type your specific requirement..."; 
+    
     addMessageToUI("user", text);
     state.chatMessages.push({ role: "user", content: text });
 
-    // 진행률 업데이트 (단순 로직: 대화할 때마다 15%씩 증가)
     state.progress = Math.min(state.progress + 15, 95);
     updateProgressBar();
 
@@ -201,38 +202,31 @@ async function sendMessage(manualText = null) {
     }
 }
 
-// 🔥 핵심: 메시지에서 텍스트, 코드블록, 옵션을 분리해서 UI에 그리기
 function processIncomingMessage(rawText) {
     let cleanText = rawText;
     
-    // 1. 옵션 추출 (||Option||)
     const optionsRegex = /\|\|(.*?)\|\|/g;
     const optionsMatch = rawText.match(optionsRegex);
     let options = [];
     
     if (optionsMatch) {
-        // 텍스트에서 옵션 부분 제거 (깔끔하게 보이기 위해)
         cleanText = rawText.replace(optionsRegex, '').trim();
-        // 옵션 배열 만들기
         optionsMatch.forEach(opt => {
-            // 구분자 제거하고 빈 항목 필터링
             const items = opt.split('||').filter(s => s.trim() !== '');
             options.push(...items);
         });
     }
 
-    // 2. 프롬프트 코드 블록 추출
     const codeBlockRegex = /```(?:markdown|prompt)?\n([\s\S]*?)```/;
     const codeMatch = cleanText.match(codeBlockRegex);
 
     if (codeMatch && codeMatch[1]) {
         state.latestPrompt = codeMatch[1];
-        state.progress = 100; // 코드가 나오면 완성으로 간주
+        state.progress = 100;
         updateProgressBar();
         runSimulation(codeMatch[1]);
     }
 
-    // 3. UI 렌더링
     addMessageToUI("assistant", cleanText, false, options);
 }
 
@@ -242,14 +236,12 @@ function addMessageToUI(role, text, isTemp = false, options = []) {
     div.id = id;
     div.className = `flex w-full flex-col ${role === 'user' ? 'items-end' : 'items-start'}`;
 
-    // 말풍선
     const bubble = document.createElement('div');
     bubble.className = `max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
         role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border text-slate-700 rounded-bl-none'
     }`;
 
     if (role === 'assistant' && !isTemp) {
-        // 코드 블록 숨김 처리 (프리뷰로 유도)
         const display = text.replace(/```(?:markdown|prompt)?\n([\s\S]*?)```/g, 
             '<div class="bg-indigo-50 border border-indigo-200 p-3 rounded-lg text-xs text-indigo-700 cursor-help"><i class="fa-solid fa-code"></i> Prompt Updated (Check Preview)</div>'
         );
@@ -262,7 +254,6 @@ function addMessageToUI(role, text, isTemp = false, options = []) {
     
     div.appendChild(bubble);
 
-    // 🔥 옵션 버튼 (Chips) 렌더링
     if (options.length > 0) {
         const chipsContainer = document.createElement('div');
         chipsContainer.className = 'suggestion-chips';
@@ -271,9 +262,21 @@ function addMessageToUI(role, text, isTemp = false, options = []) {
             const btn = document.createElement('button');
             btn.className = 'chip';
             btn.innerText = opt;
-            btn.onclick = () => sendMessage(opt); // 클릭 시 자동 전송
+            btn.onclick = () => sendMessage(opt);
             chipsContainer.appendChild(btn);
         });
+
+        const manualBtn = document.createElement('button');
+        manualBtn.className = 'chip border-indigo-300 text-indigo-600 bg-indigo-50 font-bold';
+        manualBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Write my own...';
+        manualBtn.onclick = () => {
+            const input = document.getElementById('chatInput');
+            input.focus();
+            input.placeholder = "Type your specific preference...";
+            input.scrollIntoView({ behavior: 'smooth' });
+        };
+        chipsContainer.appendChild(manualBtn);
+
         div.appendChild(chipsContainer);
     }
 
@@ -284,8 +287,6 @@ function addMessageToUI(role, text, isTemp = false, options = []) {
 }
 
 function updateProgressBar() {
-    // 채팅창 상단에 진행바를 넣을 공간이 필요함. 
-    // index.html의 chatHistory 위에 넣는 게 좋지만, 여기선 JS로 동적 삽입 처리
     let barContainer = document.getElementById('progressBarContainer');
     if (!barContainer) {
         const chatHeader = document.querySelector('#step-4 .bg-white.p-4.border-b');
@@ -306,14 +307,13 @@ function updateProgressBar() {
     
     document.getElementById('progressBar').style.width = state.progress + '%';
     document.getElementById('progressText').innerText = state.progress + '%';
-    
     if(state.progress >= 100) {
-        document.getElementById('progressBar').classList.add('bg-green-500'); // 완료 시 색 변경
+        document.getElementById('progressBar').classList.add('bg-green-500');
     }
 }
 
 /* -------------------------------------------------------------------------- */
-/* [6] 시뮬레이션 및 프리뷰 엔진 (동일)                                       */
+/* [6] 시뮬레이션 및 프리뷰 엔진                                              */
 /* -------------------------------------------------------------------------- */
 
 async function runSimulation(promptCode) {
@@ -347,6 +347,7 @@ ${promptCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
             <div class="border-t pt-4 fade-in">
                 <div class="mb-3 flex items-center gap-2">
                     <span class="text-xs font-bold text-indigo-600 uppercase">Simulation Output</span>
+                    <span class="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded">Preview</span>
                 </div>
                 <div class="prose prose-sm max-w-none text-slate-700 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                     ${marked.parse(simulationResult)}
@@ -364,57 +365,75 @@ function copyPromptCode() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [7] API 및 유틸리티 (동일)                                                 */
+/* [7] API 유틸리티 (429 Retry)                                               */
 /* -------------------------------------------------------------------------- */
-// (기존 코드와 동일하게 callLLM, callChat, Settings 함수 유지)
-// 코드가 너무 길어져서 생략했지만, 아까 v4.1의 하단 유틸리티 함수들을 그대로 쓰면 됩니다.
 
 async function callLLM(prompt, isJson) {
     const msgs = [{ role: "system", content: "You are a JSON generator." }, { role: "user", content: prompt }];
     return await callChat(msgs, isJson);
 }
 
-async function callChat(messages, isJson = false) {
+async function callChat(messages, isJson = false, retryCount = 0) {
     const key = localStorage.getItem('ps_apiKey');
     const provider = localStorage.getItem('ps_provider') || 'groq';
     const model = localStorage.getItem('ps_model') || 'gpt-3.5-turbo';
 
     if (!key) throw new Error("API Key Missing");
 
-    if (provider === 'gemini') {
-        const contents = messages.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-        }));
-        if(messages[0].role === 'system') {
-            contents.shift();
-            contents[0].parts[0].text = messages[0].content + "\n\n" + contents[0].parts[0].text;
+    try {
+        if (provider === 'gemini') {
+            const contents = messages.map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+            }));
+            if(messages[0].role === 'system') {
+                contents.shift();
+                contents[0].parts[0].text = messages[0].content + "\n\n" + contents[0].parts[0].text;
+            }
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: contents })
+            });
+
+            if (res.status === 429) {
+                if (retryCount < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return callChat(messages, isJson, retryCount + 1);
+                } else throw new Error("Rate Limit Exceeded.");
+            }
+            const data = await res.json();
+            return data.candidates[0].content.parts[0].text;
+        } else {
+            const baseUrl = provider === 'groq' 
+                ? 'https://api.groq.com/openai/v1/chat/completions' 
+                : 'https://api.openai.com/v1/chat/completions';
+            const res = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: 0.7,
+                    response_format: isJson ? { type: "json_object" } : undefined
+                })
+            });
+
+            if (res.status === 429) {
+                if (retryCount < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return callChat(messages, isJson, retryCount + 1);
+                } else throw new Error("Rate Limit Exceeded. Try again later.");
+            }
+            const data = await res.json();
+            if(data.error) throw new Error(data.error.message);
+            return data.choices[0].message.content;
         }
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: contents })
-        });
-        const data = await res.json();
-        return data.candidates[0].content.parts[0].text;
-    } else {
-        const baseUrl = provider === 'groq' 
-            ? 'https://api.groq.com/openai/v1/chat/completions' 
-            : 'https://api.openai.com/v1/chat/completions';
-        const res = await fetch(baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-            body: JSON.stringify({
-                model: model,
-                messages: messages,
-                temperature: 0.7,
-                response_format: isJson ? { type: "json_object" } : undefined
-            })
-        });
-        const data = await res.json();
-        return data.choices[0].message.content;
-    }
+    } catch (e) { throw e; }
 }
 
+/* -------------------------------------------------------------------------- */
+/* [8] 설정 관리                                                              */
+/* -------------------------------------------------------------------------- */
 function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('hidden'); }
 function loadSettings() { 
     const k = localStorage.getItem('ps_apiKey'); 
@@ -428,7 +447,6 @@ function saveAndClose() {
 }
 function clearKeys() { if(confirm("Delete Key?")) { localStorage.clear(); location.reload(); } }
 async function fetchModels(isAuto) {
-    // (기존 fetchModels 코드 사용)
     const provider = document.getElementById('apiProvider').value;
     const apiKey = document.getElementById('apiKey').value;
     const select = document.getElementById('modelSelect');
