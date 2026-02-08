@@ -14,14 +14,9 @@ const roles = [
 ];
 
 let state = {
-    step: 1,
-    role: null,
-    task: null,
-    personas: [],
-    selectedPersona: null,
-    chatMessages: [],
-    latestPrompt: "",      // 복사용 (프롬프트 원본)
-    latestSimulation: "",  // 표시용 (시뮬레이션 결과)
+    step: 1, role: null, task: null, 
+    personas: [], selectedPersona: null, chatMessages: [], 
+    latestPrompt: "", latestSimulation: ""
 };
 
 /* -------------------------------------------------------------------------- */
@@ -32,18 +27,15 @@ document.addEventListener("DOMContentLoaded", () => {
     renderRoles();
     loadSettings();
 
-    // 네비게이션 및 설정 버튼
     document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
     document.getElementById('saveSettingsBtn').addEventListener('click', saveAndClose);
     document.getElementById('fetchModelsBtn').addEventListener('click', () => fetchModels(false));
     document.getElementById('clearKeysBtn').addEventListener('click', clearKeys);
     
-    // 위자드 네비게이션
     document.getElementById('generatePersonasBtn').addEventListener('click', generatePersonas);
     document.getElementById('backToStep1').addEventListener('click', () => goToStep(1));
     document.getElementById('backToStep2').addEventListener('click', () => goToStep(2));
     
-    // 채팅 관련
     document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
     document.getElementById('chatInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -51,12 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
             sendMessage();
         }
     });
-
     document.getElementById('restartBtn').addEventListener('click', () => location.reload());
     
-    // 🔥 핵심: 버튼 기능 분리 (복사는 프롬프트, 보기는 시뮬레이션)
     const copyBtn = document.getElementById('copyPreviewBtn');
-    copyBtn.innerText = "Copy Prompt Code"; // 버튼 이름 명확화
+    copyBtn.innerText = "Copy Prompt Code"; 
     copyBtn.addEventListener('click', copyPromptCode);
 });
 
@@ -91,7 +81,7 @@ function goToStep(step) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [4] 페르소나 생성 (Meta-Prompting)                                         */
+/* [4] 페르소나 생성 (핵심: 질문 쪼개기 전략)                                  */
 /* -------------------------------------------------------------------------- */
 
 async function generatePersonas() {
@@ -102,21 +92,31 @@ async function generatePersonas() {
     goToStep(3);
     document.getElementById('loader').classList.remove('hidden');
 
+    // 🔥 핵심 변경: 질문을 한 번에 하나씩만 하도록(Persona Constraints) 강력하게 지시
     const prompt = `
     You are a Meta-Prompt Engineer.
     User Role: ${state.role.label}
     User Goal: ${state.task}
 
-    The user needs a **PROMPT** to give to their internal AI.
-    Create 3 personas that will interview the user to build this prompt.
+    Create 3 personas that will interview the user to build a perfect prompt.
+    
+    CRITICAL CONSTRAINT: 
+    The personas must use a **"Step-by-Step Interview"** method.
+    They must NEVER ask multiple questions at once.
+    They must ask **ONE** single question per turn to gather requirements (e.g., Context -> Audience -> Format -> Constraints).
+
+    Strategies:
+    1. "The Sequential Builder": Starts with context, then moves to audience, then format. Very linear.
+    2. "The Minimalist": Asks only the most critical missing piece of information. Short and direct.
+    3. "The Socratic Partner": Asks "Why" or "How" to clarify intent before writing the prompt.
 
     Output JSON Only:
     [
         {
             "title": "Persona Name",
-            "description": "Approach description",
-            "system_instruction": "You are [Persona]. Interview the user. At the end of every response, if you have enough info, output the PROMPT inside a code block \`\`\`prompt ... \`\`\`. Do NOT execute the prompt yourself. Just write the code.",
-            "first_message": "Hello! I'll help you design the prompt. First question..."
+            "description": "How they interview (e.g., One question at a time)",
+            "system_instruction": "You are [Persona]. You are building a prompt for the user's task: '${state.task}'. \n\nRULES:\n1. Ask EXACTLY ONE question at a time.\n2. Wait for the user's answer before asking the next.\n3. After every answer, update the Draft Prompt in a code block.\n4. Do NOT overwhelm the user.",
+            "first_message": "Hello! To make this prompt perfect, I need to ask you a few questions one by one. First, who is the **target audience** for this result?"
         }
     ]
     `;
@@ -154,7 +154,7 @@ function renderPersonas() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [5] 채팅 엔진 (Prompt Building)                                            */
+/* [5] 채팅 엔진 (Sequential Interview Loop)                                  */
 /* -------------------------------------------------------------------------- */
 
 function startChat(idx) {
@@ -164,8 +164,9 @@ function startChat(idx) {
     state.chatMessages = [
         { 
             role: "system", 
+            // 시스템 프롬프트에 '절대 규칙' 박아넣기
             content: state.selectedPersona.system_instruction + 
-            "\n\nRULE: Whenever you update the prompt draft, enclose it in ```prompt\n[CONTENT]\n```. The user wants to see the PROMPT code, not the result." 
+            "\n\n[GLOBAL RULES]\n1. Ask ONLY ONE question per turn.\n2. Do NOT list multiple questions.\n3. If you have enough info, output the final prompt inside ```prompt\n...\n```.\n4. Keep your chat messages short and conversational." 
         }
     ];
     document.getElementById('chatHistory').innerHTML = '';
@@ -191,16 +192,16 @@ async function sendMessage() {
         addMessageToUI("assistant", aiResponse);
         state.chatMessages.push({ role: "assistant", content: aiResponse });
 
-        // 🔥 프롬프트 코드 블록이 있는지 확인
+        // 프롬프트 코드 블록(```prompt)이 보이면 자동 시뮬레이션
         const codeBlockRegex = /```(?:prompt|markdown)?\n([\s\S]*?)```/;
         const match = aiResponse.match(codeBlockRegex);
 
         if (match && match[1]) {
-            const promptCode = match[1];
-            state.latestPrompt = promptCode; // 원본 저장 (복사용)
-            
-            // 🔥 자동 시뮬레이션 실행 (결과 미리보기용)
-            runSimulation(promptCode);
+            state.latestPrompt = match[1];
+            runSimulation(match[1]); // 시뮬레이션 실행
+        } else {
+            // 아직 완성 안 됐으면, 현재까지 파악한 내용으로 '임시 미리보기'라도 보여줄 수 있음 (옵션)
+            // 여기선 완성될 때까지 시뮬레이션 대기
         }
 
     } catch (e) {
@@ -220,9 +221,9 @@ function addMessageToUI(role, text, isTemp = false) {
     }`;
 
     if (role === 'assistant' && !isTemp) {
-        // 채팅창에서는 프롬프트 코드가 너무 길면 가림 처리 (UX)
-        const display = text.replace(/```(?:prompt|markdown)?\n([\s\S]*?)```/g, '<div class="bg-slate-100 p-2 rounded text-xs text-slate-500 italic"><i class="fa-solid fa-code"></i> Prompt Updated (Check Preview)</div>');
-        bubble.innerHTML = marked.parse(display);
+        // 프롬프트 코드는 채팅창에서 너무 길 수 있으니 'Click to Preview' 같은 느낌으로 축약 가능하지만
+        // 일단은 그대로 보여주되, 사용자가 읽기 편하게
+        bubble.innerHTML = marked.parse(text);
     } else if (isTemp) {
         bubble.innerHTML = `<div class="typing-indicator flex gap-1 p-1"><span></span><span></span><span></span></div>`;
     } else {
@@ -237,37 +238,36 @@ function addMessageToUI(role, text, isTemp = false) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [6] 시뮬레이션 엔진 (The "Simulated Result" Viewer)                          */
+/* [6] 시뮬레이션 엔진                                                        */
 /* -------------------------------------------------------------------------- */
 
 async function runSimulation(promptCode) {
     const container = document.getElementById('previewContainer');
     
-    // 1. 로딩 상태 표시
+    // 로딩 표시
     container.innerHTML = `
         <div class="flex flex-col items-center justify-center h-full text-indigo-500 fade-in">
             <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
-            <p class="font-bold">Simulating Internal AI Output...</p>
-            <p class="text-xs text-slate-400 mt-2">Testing your prompt with the model</p>
+            <p class="font-bold">Running Simulation...</p>
+            <p class="text-xs text-slate-400 mt-2">Generating sample output from your prompt</p>
         </div>
     `;
 
     try {
-        // 2. 시뮬레이션 실행 (이중 호출)
-        // 사용자가 만든 프롬프트를 실제로 AI에게 던져봄
+        // 시뮬레이션 실행 (2차 호출)
         const simulationResult = await callChat([
-            { role: "system", content: "You are the internal corporate AI. Execute the user's prompt faithfully." },
+            { role: "system", content: "You are the internal corporate AI. Follow the user's prompt exactly." },
             { role: "user", content: promptCode }
         ]);
 
         state.latestSimulation = simulationResult;
 
-        // 3. 결과 렌더링 (이것이 프리뷰 화면)
+        // 결과 렌더링
         container.innerHTML = `
             <div class="fade-in">
-                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800 flex items-center gap-2">
-                    <i class="fa-solid fa-flask"></i>
-                    <strong>Simulation Mode:</strong> This is what your internal AI will produce.
+                <div class="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-800 flex items-center justify-between">
+                    <span class="flex items-center gap-2"><i class="fa-solid fa-flask"></i> <strong>Simulation Output</strong></span>
+                    <span class="text-[10px] opacity-70">Generated by ${localStorage.getItem('ps_model') || 'AI'}</span>
                 </div>
                 <div class="prose prose-sm max-w-none text-slate-700">
                     ${marked.parse(simulationResult)}
@@ -280,16 +280,14 @@ async function runSimulation(promptCode) {
     }
 }
 
-// 🔥 중요: 복사 버튼은 '시뮬레이션 결과'가 아니라 '프롬프트 원본'을 복사함
 function copyPromptCode() {
-    if (!state.latestPrompt) return alert("No prompt generated yet.");
+    if (!state.latestPrompt) return alert("No prompt generated yet. Keep chatting!");
     
     navigator.clipboard.writeText(state.latestPrompt).then(() => {
         const btn = document.getElementById('copyPreviewBtn');
         const originalText = btn.innerText;
-        btn.innerText = "Prompt Copied! ✅";
+        btn.innerText = "Copied! ✅";
         btn.classList.add("bg-green-50", "text-green-600", "border-green-200");
-        
         setTimeout(() => {
             btn.innerText = originalText;
             btn.classList.remove("bg-green-50", "text-green-600", "border-green-200");
@@ -322,7 +320,6 @@ async function callChat(messages, isJson = false) {
             contents.shift();
             contents[0].parts[0].text = messages[0].content + "\n\n" + contents[0].parts[0].text;
         }
-
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: contents })
@@ -330,7 +327,9 @@ async function callChat(messages, isJson = false) {
         const data = await res.json();
         return data.candidates[0].content.parts[0].text;
     } else {
-        const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+        const baseUrl = provider === 'groq' 
+            ? '[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)' 
+            : '[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)';
         const res = await fetch(baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
@@ -363,9 +362,13 @@ function loadSettings() {
 }
 
 function saveAndClose() {
-    localStorage.setItem('ps_apiKey', document.getElementById('apiKey').value);
-    localStorage.setItem('ps_provider', document.getElementById('apiProvider').value);
-    localStorage.setItem('ps_model', document.getElementById('modelSelect').value);
+    const key = document.getElementById('apiKey').value;
+    const provider = document.getElementById('apiProvider').value;
+    const model = document.getElementById('modelSelect').value;
+    if (!key) return alert("Please enter an API Key.");
+    localStorage.setItem('ps_apiKey', key);
+    localStorage.setItem('ps_provider', provider);
+    localStorage.setItem('ps_model', model);
     toggleSettings();
 }
 
@@ -386,7 +389,7 @@ async function fetchModels(isAuto) {
             const data = await res.json();
             models = data.models.filter(m => m.supportedGenerationMethods.includes('generateContent')).map(m => m.name.replace('models/', ''));
         } else {
-            const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/models' : 'https://api.openai.com/v1/models';
+            const baseUrl = provider === 'groq' ? '[https://api.groq.com/openai/v1/models](https://api.groq.com/openai/v1/models)' : '[https://api.openai.com/v1/models](https://api.openai.com/v1/models)';
             const res = await fetch(baseUrl, { headers: { 'Authorization': `Bearer ${apiKey}` } });
             const data = await res.json();
             models = data.data.map(m => m.id).sort();
