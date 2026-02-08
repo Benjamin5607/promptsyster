@@ -24,7 +24,7 @@
                 <i class="fa-solid fa-wand-magic-sparkles text-xl text-yellow-300"></i>
             </div>
             <div>
-                <h1 class="text-lg font-bold leading-tight tracking-tight">PromptSister <span class="text-indigo-200 text-xs font-normal opacity-80">v3.0 Enterprise</span></h1>
+                <h1 class="text-lg font-bold leading-tight tracking-tight">PromptSister <span class="text-indigo-200 text-xs font-normal opacity-80">v3.1 Results</span></h1>
             </div>
         </div>
         <button onclick="toggleSettings()" class="bg-indigo-800 hover:bg-indigo-900 px-4 py-2 rounded-lg text-sm font-medium border border-indigo-600 transition flex items-center gap-2 shadow-sm">
@@ -100,14 +100,14 @@
                 <div class="mb-4">
                     <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">STEP 2</span>
                     <h2 class="text-2xl font-bold text-slate-800 mt-2">What do you need help with?</h2>
-                    <p class="text-sm text-slate-500">Describe your task briefly. AI will suggest templates.</p>
+                    <p class="text-sm text-slate-500">Describe your task briefly. The AI will design a workflow for you.</p>
                 </div>
                 
-                <textarea id="taskInput" class="w-full h-40 p-4 border border-slate-300 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 mb-6 text-sm leading-relaxed shadow-inner" placeholder="e.g., I need to summarize the weekly sales report for the executive meeting, focusing on the APAC region performance."></textarea>
+                <textarea id="taskInput" class="w-full h-40 p-4 border border-slate-300 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 mb-6 text-sm leading-relaxed shadow-inner" placeholder="e.g., I need to create a performance review report for my team of 5 developers. I have their raw data but need a structured summary table."></textarea>
                 
                 <div class="mt-auto space-y-3">
                     <button onclick="generateTemplates()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 transition flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate 5 Templates
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate 5 Strategies
                     </button>
                     <button onclick="skipToManual()" class="w-full text-slate-400 text-xs py-2 hover:text-slate-600 hover:underline transition">
                         Skip & Write Manually
@@ -120,39 +120,38 @@
                 
                 <div class="mb-4">
                     <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">STEP 3</span>
-                    <h2 class="text-2xl font-bold text-slate-800 mt-2">Choose a Template</h2>
-                    <p class="text-sm text-slate-500">Select a card to preview the prompt structure.</p>
+                    <h2 class="text-2xl font-bold text-slate-800 mt-2">Choose a Strategy</h2>
+                    <p class="text-sm text-slate-500">Select a card to preview how the AI will solve this.</p>
                 </div>
 
                 <div id="templateLoader" class="hidden absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center">
                     <div class="relative">
                         <div class="w-12 h-12 rounded-full border-4 border-slate-100 border-t-indigo-600 animate-spin"></div>
                     </div>
-                    <p class="text-slate-600 font-medium mt-4 animate-pulse">Designing templates for you...</p>
+                    <p class="text-slate-600 font-medium mt-4 animate-pulse">Designing actionable templates...</p>
                 </div>
 
-                <div id="templateList" class="space-y-3 overflow-y-auto flex-grow pr-2 pb-4">
-                    </div>
+                <div id="templateList" class="space-y-3 overflow-y-auto flex-grow pr-2 pb-4"></div>
             </div>
 
             <div id="step-4" class="hidden p-8 flex-col h-full fade-in">
-                <button onclick="goToStep(3)" class="self-start text-slate-400 text-xs mb-6 hover:text-indigo-600 flex items-center gap-1 transition"><i class="fa-solid fa-arrow-left"></i> Back to Templates</button>
+                <button onclick="goToStep(3)" class="self-start text-slate-400 text-xs mb-6 hover:text-indigo-600 flex items-center gap-1 transition"><i class="fa-solid fa-arrow-left"></i> Back to Strategy</button>
                 
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">STEP 4</span>
-                        <h2 class="text-2xl font-bold text-slate-800 mt-2">Final Polish</h2>
+                        <h2 class="text-2xl font-bold text-slate-800 mt-2">Fill & Execute</h2>
                     </div>
                     <div class="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-bold border border-green-200 flex items-center gap-2">
                         <i class="fa-solid fa-shield-halved"></i> Masking ON
                     </div>
                 </div>
-                <p class="text-sm text-slate-500 mb-4">Fill in the placeholders or add your data. Personal info will be masked automatically.</p>
+                <p class="text-sm text-slate-500 mb-4">Fill in the placeholders (e.g., [Insert Data]). The AI will execute this prompt.</p>
 
                 <textarea id="finalEditor" class="w-full flex-grow p-5 border border-slate-300 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono leading-relaxed text-slate-700 shadow-inner"></textarea>
                 
                 <button onclick="processAndSend()" class="w-full mt-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 transition transform hover:scale-[1.01] flex justify-center items-center gap-2">
-                    <i class="fa-solid fa-paper-plane"></i> Mask & Send to AI
+                    <i class="fa-solid fa-paper-plane"></i> Execute Prompt
                 </button>
             </div>
 
@@ -167,17 +166,17 @@
                         <i class="fa-regular fa-eye text-4xl text-slate-300"></i>
                     </div>
                     <h3 class="text-lg font-bold text-slate-500">Preview Area</h3>
-                    <p class="text-sm text-slate-400 mt-2">Select a template on the left<br>to see the detailed prompt structure.</p>
+                    <p class="text-sm text-slate-400 mt-2">Select a strategy on the left<br>to see the detailed prompt structure.</p>
                 </div>
 
                 <div id="previewContentWrapper" class="hidden w-full h-full flex flex-col text-left fade-in">
                      <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-200">
                         <div>
-                            <span class="text-xs font-bold text-indigo-500 uppercase tracking-wide">Selected Template</span>
+                            <span class="text-xs font-bold text-indigo-500 uppercase tracking-wide">Selected Strategy</span>
                             <h3 id="previewTitle" class="font-bold text-xl text-slate-800"></h3>
                         </div>
                         <button onclick="confirmTemplate()" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-sm font-semibold">
-                            Select This <i class="fa-solid fa-arrow-right ml-1"></i>
+                            Use This Strategy <i class="fa-solid fa-arrow-right ml-1"></i>
                         </button>
                      </div>
                      <div id="previewBody" class="flex-grow overflow-y-auto text-sm font-mono text-slate-600 whitespace-pre-wrap bg-white p-6 rounded-xl border border-slate-200 shadow-sm leading-relaxed"></div>
@@ -189,10 +188,10 @@
                 <div class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative">
                     <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
                         <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
-                            <i class="fa-solid fa-robot"></i> AI Response (Raw / Masked)
+                            <i class="fa-solid fa-robot"></i> AI Execution Result
                         </span>
                         <span id="loadingText" class="hidden text-indigo-600 text-xs font-bold animate-pulse flex items-center gap-2">
-                            <i class="fa-solid fa-circle-notch fa-spin"></i> Processing...
+                            <i class="fa-solid fa-circle-notch fa-spin"></i> Working on it...
                         </span>
                     </div>
                     <div id="aiResponseOutput" class="flex-grow p-6 overflow-y-auto text-sm font-mono text-slate-500 whitespace-pre-wrap"></div>
@@ -201,10 +200,10 @@
                 <div class="flex-1 bg-indigo-50 rounded-2xl shadow-sm border border-indigo-200 flex flex-col overflow-hidden">
                     <div class="p-4 border-b border-indigo-200 bg-indigo-100 flex justify-between items-center">
                         <span class="text-xs font-bold text-indigo-800 uppercase flex items-center gap-2">
-                            <i class="fa-solid fa-check-double"></i> Final Result (Restored)
+                            <i class="fa-solid fa-check-double"></i> Final Deliverable (Restored)
                         </span>
                         <button onclick="copyResult()" class="text-xs bg-white text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition font-bold shadow-sm flex items-center gap-1">
-                            <i class="fa-regular fa-copy"></i> Copy
+                            <i class="fa-regular fa-copy"></i> Copy Result
                         </button>
                     </div>
                     <div id="finalResult" class="flex-grow p-6 overflow-y-auto text-sm text-slate-900 whitespace-pre-wrap leading-relaxed"></div>
@@ -215,48 +214,32 @@
     </main>
 
     <script>
-        /* -------------------------------------------------------------------------- */
-        /* 1. Data & State Management                                                 */
-        /* -------------------------------------------------------------------------- */
+        document.addEventListener("DOMContentLoaded", () => {
+            renderRoles();
+            loadSettings();
+        });
 
+        /* 1. Data & State */
         const roles = [
             { id: "TeamManager", label: "Team Manager", icon: "fa-users" },
             { id: "HRBP", label: "HR Expert (HRBP)", icon: "fa-user-tie" },
             { id: "QualityManager", label: "QA Manager", icon: "fa-magnifying-glass-chart" },
             { id: "OpsManager", label: "Operations Manager", icon: "fa-gears" },
-            { id: "ProductManager", label: "Product Manager (PM)", icon: "fa-clipboard-list" },
+            { id: "ProductManager", label: "Product Manager", icon: "fa-clipboard-list" },
             { id: "DevLead", label: "Tech Lead", icon: "fa-code" },
             { id: "Marketing", label: "Marketer", icon: "fa-bullhorn" },
             { id: "Translator", label: "Biz Translator", icon: "fa-language" }
         ];
 
         let state = {
-            step: 1,
-            role: null,
-            task: null,
-            templates: [], 
-            selectedTemplate: null,
-            maskingMap: {},
-            counter: { email: 1, phone: 1, id: 1 }
+            step: 1, role: null, task: null, templates: [], selectedTemplate: null,
+            maskingMap: {}, counter: { email: 1, phone: 1, id: 1 }
         };
 
-        /* -------------------------------------------------------------------------- */
-        /* 2. Initialization & UI Handlers                                            */
-        /* -------------------------------------------------------------------------- */
-
-        // Ensure DOM is loaded before running scripts
-        document.addEventListener("DOMContentLoaded", () => {
-            console.log("DOM Loaded. Rendering roles...");
-            renderRoles();
-            loadSettings();
-        });
-
+        /* 2. UI Logic */
         function renderRoles() {
             const grid = document.getElementById('roleGrid');
-            if (!grid) {
-                console.error("Error: Element with ID 'roleGrid' not found!");
-                return;
-            }
+            if(!grid) return;
             grid.innerHTML = roles.map(r => `
                 <div onclick="selectRole('${r.id}')" class="cursor-pointer bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-500 hover:bg-indigo-50 hover:shadow-md transition flex flex-col items-center gap-3 group">
                     <div class="bg-slate-100 p-3 rounded-full group-hover:bg-white transition">
@@ -274,14 +257,11 @@
 
         function goToStep(step) {
             state.step = step;
-            // Hide all steps
             [1, 2, 3, 4].forEach(i => document.getElementById(`step-${i}`).classList.add('hidden'));
-            // Show current step
             document.getElementById(`step-${step}`).classList.remove('hidden');
 
-            // Panel Management
             if(step === 4 && document.getElementById('finalResult').innerText !== "") {
-                // Keep result panel
+                // keep result
             } else {
                 document.getElementById('previewPanel').classList.remove('hidden');
                 document.getElementById('resultPanel').classList.add('hidden');
@@ -293,53 +273,50 @@
             }
         }
 
-        /* -------------------------------------------------------------------------- */
-        /* 3. AI Template Generator (Meta-Prompting)                                  */
-        /* -------------------------------------------------------------------------- */
-
+        /* 3. AI Template Generator (Meta-Prompting Updated) */
         async function generateTemplates() {
             const task = document.getElementById('taskInput').value;
             if (!task) return alert("Please describe your task first!");
-            
             state.task = task;
             goToStep(3);
             
             const loader = document.getElementById('templateLoader');
             const list = document.getElementById('templateList');
-            
             loader.classList.remove('hidden');
             list.innerHTML = '';
 
+            // 🔥 핵심: 결과물 지향적 메타 프롬프트 (Result-Oriented Meta Prompt)
             const metaPrompt = `
             You are an expert Enterprise Prompt Engineer.
-            
             User Persona: ${state.role.label}
             User Task: ${state.task}
 
-            Please generate 5 distinct, professional prompt templates that the user can use with an AI (like ChatGPT/Claude) to accomplish this task.
+            Generate 5 distinct prompt templates.
             
-            IMPORTANT: 
-            1. Output MUST be a valid JSON array.
-            2. Do NOT use markdown code blocks. Just raw JSON.
-            3. Language: English.
-            
-            Structure: [{"title": "Short Title", "description": "1 sentence benefit", "content": "Full Prompt Template..."}]
-            
-            - "content" should include sections like [Role], [Context], [Task], [Constraints].
+            CRITICAL INSTRUCTIONS:
+            1. The user wants the AI to **DO** the work (Draft the email, Write the code, Create the table), NOT explain "how to" do it.
+            2. Avoid educational advice. Focus on **execution**.
+            3. Use diverse strategies:
+               - "The Architect": Ask clarifying questions first, then execute.
+               - "The Drafter": Create a draft immediately.
+               - "The Analyst": Analyze data and output a structured report.
+               - "The Critic": Review input and rewrite it professionally.
+
+            OUTPUT FORMAT:
+            - Valid JSON array only. No markdown.
+            - Keys: "title", "description", "content".
+            - In "content", include clear [Placeholders] for user data.
             `;
 
             try {
                 const responseText = await callAI(metaPrompt, true); 
                 let jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
                 let templates = JSON.parse(jsonStr);
-
                 state.templates = templates;
                 renderTemplates(templates);
-
             } catch (e) {
                 console.error(e);
-                alert("Failed to generate templates. Please check your API Key or try again.");
-                list.innerHTML = `<button onclick="generateTemplates()" class="text-indigo-600 font-bold underline mt-4">Try Again</button>`;
+                alert("Failed to generate templates. Check API Key.");
                 goToStep(2); 
             } finally {
                 loader.classList.add('hidden');
@@ -351,36 +328,25 @@
             list.innerHTML = templates.map((t, idx) => `
                 <div onclick="previewTemplate(${idx})" class="p-5 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 hover:shadow-sm cursor-pointer transition group">
                     <h3 class="font-bold text-slate-700 text-sm mb-1 group-hover:text-indigo-700 flex justify-between items-center">
-                        ${t.title}
-                        <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-400 text-xs"></i>
+                        ${t.title} <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-400 text-xs"></i>
                     </h3>
                     <p class="text-xs text-slate-500 leading-relaxed">${t.description}</p>
                 </div>
             `).join('');
-            
-            list.innerHTML += `
-                <div onclick="skipToManual()" class="mt-4 p-4 border border-dashed border-slate-300 rounded-xl hover:bg-slate-50 cursor-pointer text-center text-slate-500 text-xs font-medium transition">
-                    <i class="fa-solid fa-pen mr-2"></i>None of these? Write Manually
-                </div>
-            `;
+            list.innerHTML += `<div onclick="skipToManual()" class="mt-4 p-4 border border-dashed border-slate-300 rounded-xl hover:bg-slate-50 cursor-pointer text-center text-slate-500 text-xs font-medium transition"><i class="fa-solid fa-pen mr-2"></i>Write Manually</div>`;
         }
 
         function previewTemplate(idx) {
             const t = state.templates[idx];
             state.selectedTemplate = t;
-            
             document.getElementById('previewPlaceholder').classList.add('hidden');
-            const wrapper = document.getElementById('previewContentWrapper');
-            wrapper.classList.remove('hidden');
-            
+            document.getElementById('previewContentWrapper').classList.remove('hidden');
             document.getElementById('previewTitle').innerText = t.title;
             document.getElementById('previewBody').innerText = t.content;
         }
 
         function skipToManual() {
-            state.selectedTemplate = { 
-                content: `Role: ${state.role.label}\nTask: ${state.task || 'General Task'}\n\n[Instructions]\nPlease help me with...\n\n[Data]\n(Paste your data here)` 
-            };
+            state.selectedTemplate = { content: `Role: ${state.role.label}\nTask: ${state.task}\n\n[Data]\n(Paste data here)\n\n[Instruction]\nPlease execute this task.` };
             confirmTemplate();
         }
 
@@ -390,10 +356,7 @@
             goToStep(4);
         }
 
-        /* -------------------------------------------------------------------------- */
-        /* 4. Masking & Sending Logic                                                 */
-        /* -------------------------------------------------------------------------- */
-
+        /* 4. Masking & Execution */
         const patterns = {
             email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
             phone: /(010-\d{3,4}-\d{4})|(\d{2,3}-\d{3,4}-\d{4})|(\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}/g
@@ -402,7 +365,7 @@
         async function processAndSend() {
             const rawText = document.getElementById('finalEditor').value;
             if(!rawText.trim()) return alert("Please enter content.");
-            if(!localStorage.getItem('ps_apiKey')) return alert("API Key missing. Check Settings.");
+            if(!localStorage.getItem('ps_apiKey')) return alert("API Key missing.");
 
             document.getElementById('previewPanel').classList.add('hidden');
             document.getElementById('resultPanel').classList.remove('hidden');
@@ -410,13 +373,9 @@
             
             const aiOutput = document.getElementById('aiResponseOutput');
             const finalOutput = document.getElementById('finalResult');
-            
-            aiOutput.innerText = "";
-            finalOutput.innerText = "";
+            aiOutput.innerText = ""; finalOutput.innerText = "";
 
-            state.maskingMap = {};
-            state.counter = { email: 1, phone: 1 };
-
+            state.maskingMap = {}; state.counter = { email: 1, phone: 1 };
             let safeText = rawText;
             safeText = safeText.replace(patterns.email, (m) => { const k = `[EMAIL_${state.counter.email++}]`; state.maskingMap[k] = m; return k; });
             safeText = safeText.replace(patterns.phone, (m) => { const k = `[PHONE_${state.counter.phone++}]`; state.maskingMap[k] = m; return k; });
@@ -424,14 +383,11 @@
             try {
                 const response = await callAI(safeText, false);
                 aiOutput.innerText = response;
-
                 let restored = response;
-                const keys = Object.keys(state.maskingMap).sort((a,b) => b.length - a.length);
-                for(const k of keys) {
+                Object.keys(state.maskingMap).sort((a,b)=>b.length-a.length).forEach(k => {
                     restored = restored.split(k).join(state.maskingMap[k]);
-                }
+                });
                 finalOutput.innerText = restored;
-
             } catch(e) {
                 aiOutput.innerText = "Error: " + e.message;
             } finally {
@@ -442,132 +398,87 @@
         function copyResult() {
             const text = document.getElementById('finalResult').innerText;
             if(!text) return;
-            navigator.clipboard.writeText(text).then(() => {
-                alert("Copied!");
-            });
+            navigator.clipboard.writeText(text).then(() => alert("Copied!"));
         }
 
-        /* -------------------------------------------------------------------------- */
-        /* 5. API Client                                                              */
-        /* -------------------------------------------------------------------------- */
-
+        /* 5. API Client */
         function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('hidden'); }
-
+        
         function loadSettings() {
             const key = localStorage.getItem('ps_apiKey');
-            const provider = localStorage.getItem('ps_provider');
             if(key) {
                 document.getElementById('apiKey').value = key;
-                document.getElementById('apiProvider').value = provider || 'groq';
+                document.getElementById('apiProvider').value = localStorage.getItem('ps_provider') || 'groq';
                 fetchModels(true);
-            } else {
-                toggleSettings();
-            }
+            } else { toggleSettings(); }
         }
 
-        function resetModelList() {
-            document.getElementById('modelSelect').innerHTML = '<option value="" disabled selected>Enter Key & Click Fetch</option>';
-        }
+        function resetModelList() { document.getElementById('modelSelect').innerHTML = '<option>Enter Key & Click Fetch</option>'; }
 
         function saveAndClose() {
             const key = document.getElementById('apiKey').value;
-            const provider = document.getElementById('apiProvider').value;
-            const model = document.getElementById('modelSelect').value;
-
-            if(!key) return alert("API Key is required.");
-            
+            if(!key) return alert("API Key required.");
             localStorage.setItem('ps_apiKey', key);
-            localStorage.setItem('ps_provider', provider);
-            if(model) localStorage.setItem('ps_model', model);
-            
+            localStorage.setItem('ps_provider', document.getElementById('apiProvider').value);
+            localStorage.setItem('ps_model', document.getElementById('modelSelect').value);
             toggleSettings();
         }
 
-        function clearKeys() {
-            if(confirm("Remove API Key?")) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
+        function clearKeys() { if(confirm("Remove Key?")) { localStorage.clear(); location.reload(); } }
 
-        async function fetchModels(isAutoLoad = false) {
+        async function fetchModels(isAuto) {
             const provider = document.getElementById('apiProvider').value;
             const apiKey = document.getElementById('apiKey').value;
             const modelSelect = document.getElementById('modelSelect');
-            const btn = document.getElementById('refreshBtn');
-
-            if(!apiKey) { if(!isAutoLoad) alert("Enter API Key"); return; }
-            if(!isAutoLoad) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting...';
+            if(!apiKey) return;
 
             try {
                 let models = [];
-                if (provider === 'openai' || provider === 'groq') {
-                    const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/models' : 'https://api.openai.com/v1/models';
-                    const res = await fetch(baseUrl, { headers: { 'Authorization': `Bearer ${apiKey}` } });
-                    if(!res.ok) throw new Error("Invalid Key");
-                    const data = await res.json();
-                    models = data.data.map(m => m.id).sort();
-                } else if (provider === 'gemini') {
+                if (provider === 'gemini') {
                     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-                    if(!res.ok) throw new Error("Invalid Key");
+                    if(!res.ok) throw new Error();
                     const data = await res.json();
                     models = data.models.filter(m => m.supportedGenerationMethods.includes('generateContent')).map(m => m.name.replace('models/', ''));
+                } else {
+                    const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/models' : 'https://api.openai.com/v1/models';
+                    const res = await fetch(baseUrl, { headers: { 'Authorization': `Bearer ${apiKey}` } });
+                    if(!res.ok) throw new Error();
+                    const data = await res.json();
+                    models = data.data.map(m => m.id).sort();
                 }
-
                 modelSelect.innerHTML = '';
-                models.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m; opt.innerText = m; modelSelect.appendChild(opt);
-                });
-                
+                models.forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.innerText = m; modelSelect.appendChild(opt); });
                 const saved = localStorage.getItem('ps_model');
                 if(saved && models.includes(saved)) modelSelect.value = saved;
-
-                if(!isAutoLoad) {
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Success';
-                    setTimeout(() => btn.innerHTML = 'Fetch Models', 2000);
-                }
-            } catch (error) {
-                console.error(error);
-                if(!isAutoLoad) btn.innerHTML = 'Failed';
-            }
+            } catch (e) { if(!isAuto) alert("Connection Failed"); }
         }
 
-        async function callAI(prompt, isSystem = false) {
+        async function callAI(prompt, isSystem) {
             const provider = localStorage.getItem('ps_provider') || 'groq';
             const apiKey = localStorage.getItem('ps_apiKey');
             const model = localStorage.getItem('ps_model') || 'gpt-3.5-turbo';
+            if(!apiKey) throw new Error("Key missing");
 
-            if(!apiKey) throw new Error("API Key missing.");
-
-            const systemMsg = isSystem ? "You are a helpful assistant that outputs ONLY JSON." : "You are a helpful assistant.";
+            const sysMsg = isSystem ? "You are a JSON generator." : "You are a helpful assistant.";
 
             if (provider === 'gemini') {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-                const payload = {
-                    contents: [{ role: "user", parts: [{ text: prompt }] }]
-                };
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: isSystem ? prompt : prompt }] }] })
                 });
                 const data = await res.json();
-                if(data.error) throw new Error(data.error.message);
                 return data.candidates[0].content.parts[0].text;
             } else {
                 const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
                 const res = await fetch(baseUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                     body: JSON.stringify({
                         model: model,
-                        messages: [{ role: "system", content: systemMsg }, { role: "user", content: prompt }],
+                        messages: [{ role: "system", content: sysMsg }, { role: "user", content: prompt }],
                         temperature: isSystem ? 0.2 : 0.7
                     })
                 });
                 const data = await res.json();
-                if(data.error) throw new Error(data.error.message);
                 return data.choices[0].message.content;
             }
         }
