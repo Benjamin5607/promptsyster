@@ -1,8 +1,7 @@
 /* -------------------------------------------------------------------------- */
-/* [1] 전역 설정 및 상태 관리 (Global State)                                  */
+/* [1] 전역 설정 및 상태 관리                                                 */
 /* -------------------------------------------------------------------------- */
 
-// 1. 핵심 8대 롤 정의 (아이콘 매핑 포함)
 const roles = [
     { id: "TeamManager", label: "Team Manager", icon: "fa-users" },
     { id: "HRBP", label: "HRBP", icon: "fa-user-tie" },
@@ -14,7 +13,6 @@ const roles = [
     { id: "BudgetWorkforce", label: "Budget & Workforce", icon: "fa-money-bill-trend-up" }
 ];
 
-// 2. 앱 상태 (State)
 let state = {
     step: 1,
     role: null,
@@ -22,31 +20,30 @@ let state = {
     personas: [],
     selectedPersona: null,
     chatMessages: [],
-    latestPreview: "",
-    maskingMap: {},
-    counter: { email: 1, phone: 1 }
+    latestPrompt: "",      // 복사용 (프롬프트 원본)
+    latestSimulation: "",  // 표시용 (시뮬레이션 결과)
 };
 
 /* -------------------------------------------------------------------------- */
-/* [2] 초기화 및 이벤트 리스너 (Initialization)                               */
+/* [2] 초기화 및 이벤트 리스너                                                */
 /* -------------------------------------------------------------------------- */
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. 초기 렌더링
     renderRoles();
     loadSettings();
 
-    // 2. 버튼 이벤트 연결 (HTML ID 매핑)
+    // 네비게이션 및 설정 버튼
     document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
     document.getElementById('saveSettingsBtn').addEventListener('click', saveAndClose);
     document.getElementById('fetchModelsBtn').addEventListener('click', () => fetchModels(false));
     document.getElementById('clearKeysBtn').addEventListener('click', clearKeys);
     
+    // 위자드 네비게이션
     document.getElementById('generatePersonasBtn').addEventListener('click', generatePersonas);
-    
     document.getElementById('backToStep1').addEventListener('click', () => goToStep(1));
     document.getElementById('backToStep2').addEventListener('click', () => goToStep(2));
     
+    // 채팅 관련
     document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
     document.getElementById('chatInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -56,11 +53,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.getElementById('restartBtn').addEventListener('click', () => location.reload());
-    document.getElementById('copyPreviewBtn').addEventListener('click', copyPreview);
+    
+    // 🔥 핵심: 버튼 기능 분리 (복사는 프롬프트, 보기는 시뮬레이션)
+    const copyBtn = document.getElementById('copyPreviewBtn');
+    copyBtn.innerText = "Copy Prompt Code"; // 버튼 이름 명확화
+    copyBtn.addEventListener('click', copyPromptCode);
 });
 
 /* -------------------------------------------------------------------------- */
-/* [3] 위자드 UI 로직 (Wizard Flow)                                           */
+/* [3] 위자드 UI 로직                                                         */
 /* -------------------------------------------------------------------------- */
 
 function renderRoles() {
@@ -74,7 +75,6 @@ function renderRoles() {
         </div>
     `).join('');
 
-    // 동적 생성된 카드에 이벤트 연결
     document.querySelectorAll('.role-card').forEach(card => {
         card.addEventListener('click', () => {
             const roleId = card.getAttribute('data-id');
@@ -102,42 +102,33 @@ async function generatePersonas() {
     goToStep(3);
     document.getElementById('loader').classList.remove('hidden');
 
-    // AI에게 "역할극 캐릭터 3명"을 만들어달라고 요청
     const prompt = `
-    System Architect Task.
+    You are a Meta-Prompt Engineer.
     User Role: ${state.role.label}
     User Goal: ${state.task}
 
-    Create 3 distinct "Co-Pilot Personas" to help the user complete this goal interactively.
-    Strategies:
-    1. "The Strategist": Asks high-level questions first.
-    2. "The Fast Drafter": Creates a draft immediately, then iterates.
-    3. "The Critic": Asks for data/constraints before starting.
+    The user needs a **PROMPT** to give to their internal AI.
+    Create 3 personas that will interview the user to build this prompt.
 
-    OUTPUT JSON ONLY:
+    Output JSON Only:
     [
         {
             "title": "Persona Name",
-            "description": "Short description of approach",
-            "system_instruction": "You are [Persona Name]. Goal: [User Goal]. Do NOT finish immediately. Ask questions...",
-            "first_message": "Hello! I am [Name]. To start, please tell me..."
+            "description": "Approach description",
+            "system_instruction": "You are [Persona]. Interview the user. At the end of every response, if you have enough info, output the PROMPT inside a code block \`\`\`prompt ... \`\`\`. Do NOT execute the prompt yourself. Just write the code.",
+            "first_message": "Hello! I'll help you design the prompt. First question..."
         }
     ]
     `;
 
     try {
-        // AI 호출 (One-shot)
         const response = await callLLM(prompt, true);
-        
-        // JSON 파싱 (마크다운 제거 후)
         const jsonStr = response.replace(/```json|```/g, '').trim();
         state.personas = JSON.parse(jsonStr);
-
         renderPersonas();
-
     } catch (e) {
         console.error(e);
-        alert("Failed to generate personas. Please check your API Key.");
+        alert("Generation failed. Check API Key.");
         goToStep(2);
     } finally {
         document.getElementById('loader').classList.add('hidden');
@@ -157,31 +148,28 @@ function renderPersonas() {
 
     document.querySelectorAll('.persona-card').forEach(card => {
         card.addEventListener('click', () => {
-            const idx = card.getAttribute('data-index');
-            startChat(idx);
+            startChat(card.getAttribute('data-index'));
         });
     });
 }
 
 /* -------------------------------------------------------------------------- */
-/* [5] 채팅 엔진 (The Co-Pilot Core)                                          */
+/* [5] 채팅 엔진 (Prompt Building)                                            */
 /* -------------------------------------------------------------------------- */
 
 function startChat(idx) {
     state.selectedPersona = state.personas[idx];
     goToStep(4);
 
-    // 채팅 기록 초기화
     state.chatMessages = [
         { 
             role: "system", 
             content: state.selectedPersona.system_instruction + 
-            "\n\nIMPORTANT: If you create a deliverable (report, table, code), wrap it in markdown code blocks (```markdown or ```csv) so I can preview it." 
+            "\n\nRULE: Whenever you update the prompt draft, enclose it in ```prompt\n[CONTENT]\n```. The user wants to see the PROMPT code, not the result." 
         }
     ];
     document.getElementById('chatHistory').innerHTML = '';
-
-    // 첫 메시지 추가
+    
     addMessageToUI("assistant", state.selectedPersona.first_message);
     state.chatMessages.push({ role: "assistant", content: state.selectedPersona.first_message });
 }
@@ -191,28 +179,29 @@ async function sendMessage() {
     const text = input.value.trim();
     if (!text) return;
 
-    // 1. PII 마스킹 (보안)
-    const safeText = maskPII(text);
     input.value = '';
+    addMessageToUI("user", text);
+    state.chatMessages.push({ role: "user", content: text });
 
-    // 2. 사용자 메시지 UI 표시
-    addMessageToUI("user", safeText);
-    state.chatMessages.push({ role: "user", content: safeText });
-
-    // 3. 로딩 표시
     const loadingId = addMessageToUI("assistant", "Thinking...", true);
 
     try {
-        // 4. AI 호출 (대화 기록 포함)
         const aiResponse = await callChat(state.chatMessages);
-
-        // 5. 로딩 제거 및 응답 표시
         document.getElementById(loadingId).remove();
         addMessageToUI("assistant", aiResponse);
         state.chatMessages.push({ role: "assistant", content: aiResponse });
 
-        // 6. 프리뷰 추출 (코드 블록 감지)
-        extractPreview(aiResponse);
+        // 🔥 프롬프트 코드 블록이 있는지 확인
+        const codeBlockRegex = /```(?:prompt|markdown)?\n([\s\S]*?)```/;
+        const match = aiResponse.match(codeBlockRegex);
+
+        if (match && match[1]) {
+            const promptCode = match[1];
+            state.latestPrompt = promptCode; // 원본 저장 (복사용)
+            
+            // 🔥 자동 시뮬레이션 실행 (결과 미리보기용)
+            runSimulation(promptCode);
+        }
 
     } catch (e) {
         document.getElementById(loadingId).innerText = "Error: " + e.message;
@@ -227,16 +216,14 @@ function addMessageToUI(role, text, isTemp = false) {
 
     const bubble = document.createElement('div');
     bubble.className = `max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-        role === 'user' 
-        ? 'bg-indigo-600 text-white rounded-br-none' 
-        : 'bg-white border text-slate-700 rounded-bl-none'
+        role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border text-slate-700 rounded-bl-none'
     }`;
 
-    // 마크다운 파싱 (AI 메시지만)
     if (role === 'assistant' && !isTemp) {
-        bubble.innerHTML = marked.parse(text);
+        // 채팅창에서는 프롬프트 코드가 너무 길면 가림 처리 (UX)
+        const display = text.replace(/```(?:prompt|markdown)?\n([\s\S]*?)```/g, '<div class="bg-slate-100 p-2 rounded text-xs text-slate-500 italic"><i class="fa-solid fa-code"></i> Prompt Updated (Check Preview)</div>');
+        bubble.innerHTML = marked.parse(display);
     } else if (isTemp) {
-        // 로딩 애니메이션
         bubble.innerHTML = `<div class="typing-indicator flex gap-1 p-1"><span></span><span></span><span></span></div>`;
     } else {
         bubble.innerText = text;
@@ -246,105 +233,107 @@ function addMessageToUI(role, text, isTemp = false) {
     const history = document.getElementById('chatHistory');
     history.appendChild(div);
     history.scrollTop = history.scrollHeight;
-
     return id;
 }
 
 /* -------------------------------------------------------------------------- */
-/* [6] 프리뷰 엔진 (Live Preview)                                             */
+/* [6] 시뮬레이션 엔진 (The "Simulated Result" Viewer)                          */
 /* -------------------------------------------------------------------------- */
 
-function extractPreview(text) {
-    // 1. 마크다운 코드 블록 찾기 (```...```)
-    const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)```/;
-    const match = text.match(codeBlockRegex);
+async function runSimulation(promptCode) {
+    const container = document.getElementById('previewContainer');
+    
+    // 1. 로딩 상태 표시
+    container.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full text-indigo-500 fade-in">
+            <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
+            <p class="font-bold">Simulating Internal AI Output...</p>
+            <p class="text-xs text-slate-400 mt-2">Testing your prompt with the model</p>
+        </div>
+    `;
 
-    if (match && match[1]) {
-        // 코드 블록이 있으면 그걸 프리뷰로 업데이트
-        updatePreview(match[1]);
-    } else if (text.length > 200 && (text.includes("Table") || text.includes("#"))) {
-        // 코드 블록이 없어도 내용이 길고 구조화되어 보이면 전체 업데이트
-        updatePreview(text);
+    try {
+        // 2. 시뮬레이션 실행 (이중 호출)
+        // 사용자가 만든 프롬프트를 실제로 AI에게 던져봄
+        const simulationResult = await callChat([
+            { role: "system", content: "You are the internal corporate AI. Execute the user's prompt faithfully." },
+            { role: "user", content: promptCode }
+        ]);
+
+        state.latestSimulation = simulationResult;
+
+        // 3. 결과 렌더링 (이것이 프리뷰 화면)
+        container.innerHTML = `
+            <div class="fade-in">
+                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800 flex items-center gap-2">
+                    <i class="fa-solid fa-flask"></i>
+                    <strong>Simulation Mode:</strong> This is what your internal AI will produce.
+                </div>
+                <div class="prose prose-sm max-w-none text-slate-700">
+                    ${marked.parse(simulationResult)}
+                </div>
+            </div>
+        `;
+
+    } catch (e) {
+        container.innerHTML = `<div class="text-red-500 p-4">Simulation Failed: ${e.message}</div>`;
     }
 }
 
-function updatePreview(content) {
-    // 마스킹된 데이터 복구 (필요시) - 여기선 간단히 원본 표시
-    state.latestPreview = content;
-    const container = document.getElementById('previewContainer');
+// 🔥 중요: 복사 버튼은 '시뮬레이션 결과'가 아니라 '프롬프트 원본'을 복사함
+function copyPromptCode() {
+    if (!state.latestPrompt) return alert("No prompt generated yet.");
     
-    // 페이드인 효과와 함께 렌더링
-    container.innerHTML = `<div class="fade-in">${marked.parse(content)}</div>`;
-}
-
-function copyPreview() {
-    if (!state.latestPreview) return alert("Nothing to copy yet.");
-    navigator.clipboard.writeText(state.latestPreview).then(() => {
+    navigator.clipboard.writeText(state.latestPrompt).then(() => {
         const btn = document.getElementById('copyPreviewBtn');
         const originalText = btn.innerText;
-        btn.innerText = "Copied!";
-        setTimeout(() => btn.innerText = originalText, 2000);
+        btn.innerText = "Prompt Copied! ✅";
+        btn.classList.add("bg-green-50", "text-green-600", "border-green-200");
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.remove("bg-green-50", "text-green-600", "border-green-200");
+        }, 2000);
     });
 }
 
 /* -------------------------------------------------------------------------- */
-/* [7] API 및 유틸리티 (API & Utils)                                          */
+/* [7] API 및 유틸리티                                                        */
 /* -------------------------------------------------------------------------- */
 
-// PII 마스킹 (이메일/전화번호)
-function maskPII(text) {
-    return text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[EMAIL_MASKED]")
-               .replace(/\d{3}-\d{3,4}-\d{4}/g, "[PHONE_MASKED]");
-}
-
-// LLM 호출 (단발성)
 async function callLLM(prompt, isJson) {
     const msgs = [{ role: "system", content: "You are a JSON generator." }, { role: "user", content: prompt }];
     return await callChat(msgs, isJson);
 }
 
-// LLM 호출 (대화형 - 통합 어댑터)
 async function callChat(messages, isJson = false) {
     const key = localStorage.getItem('ps_apiKey');
     const provider = localStorage.getItem('ps_provider') || 'groq';
     const model = localStorage.getItem('ps_model') || 'gpt-3.5-turbo';
 
-    if (!key) throw new Error("API Key is missing. Check Settings.");
+    if (!key) throw new Error("API Key Missing");
 
     if (provider === 'gemini') {
-        // Gemini API 포맷 변환
         const contents = messages.map(m => ({
             role: m.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: m.content }]
         }));
-        
-        // System 프롬프트 처리 (Gemini는 user 메시지 앞에 붙이는 게 안전)
-        if (messages[0].role === 'system') {
-            contents.shift(); 
+        if(messages[0].role === 'system') {
+            contents.shift();
             contents[0].parts[0].text = messages[0].content + "\n\n" + contents[0].parts[0].text;
         }
 
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: contents })
         });
         const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
         return data.candidates[0].content.parts[0].text;
-
     } else {
-        // OpenAI / Groq 표준 포맷
-        const baseUrl = provider === 'groq' 
-            ? 'https://api.groq.com/openai/v1/chat/completions' 
-            : 'https://api.openai.com/v1/chat/completions';
-
+        const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
         const res = await fetch(baseUrl, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${key}` 
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
             body: JSON.stringify({
                 model: model,
                 messages: messages,
@@ -353,18 +342,16 @@ async function callChat(messages, isJson = false) {
             })
         });
         const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
+        if(data.error) throw new Error(data.error.message);
         return data.choices[0].message.content;
     }
 }
 
 /* -------------------------------------------------------------------------- */
-/* [8] 설정 관리 (Settings)                                                   */
+/* [8] 설정 관리                                                              */
 /* -------------------------------------------------------------------------- */
 
-function toggleSettings() {
-    document.getElementById('settingsPanel').classList.toggle('hidden');
-}
+function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('hidden'); }
 
 function loadSettings() {
     const key = localStorage.getItem('ps_apiKey');
@@ -372,80 +359,41 @@ function loadSettings() {
         document.getElementById('apiKey').value = key;
         document.getElementById('apiProvider').value = localStorage.getItem('ps_provider') || 'groq';
         fetchModels(true);
-    } else {
-        toggleSettings();
-    }
+    } else { toggleSettings(); }
 }
 
 function saveAndClose() {
-    const key = document.getElementById('apiKey').value;
-    const provider = document.getElementById('apiProvider').value;
-    const model = document.getElementById('modelSelect').value;
-
-    if (!key) return alert("Please enter an API Key.");
-
-    localStorage.setItem('ps_apiKey', key);
-    localStorage.setItem('ps_provider', provider);
-    localStorage.setItem('ps_model', model);
-    
+    localStorage.setItem('ps_apiKey', document.getElementById('apiKey').value);
+    localStorage.setItem('ps_provider', document.getElementById('apiProvider').value);
+    localStorage.setItem('ps_model', document.getElementById('modelSelect').value);
     toggleSettings();
 }
 
 function clearKeys() {
-    if (confirm("Are you sure you want to delete your API Key?")) {
-        localStorage.clear();
-        location.reload();
-    }
+    if(confirm("Delete Key?")) { localStorage.clear(); location.reload(); }
 }
 
-async function fetchModels(isAutoLoad = false) {
+async function fetchModels(isAuto) {
     const provider = document.getElementById('apiProvider').value;
     const apiKey = document.getElementById('apiKey').value;
     const select = document.getElementById('modelSelect');
-    const btn = document.getElementById('fetchModelsBtn');
-
-    if (!apiKey) {
-        if (!isAutoLoad) alert("Enter API Key first.");
-        return;
-    }
-
-    if (!isAutoLoad) btn.innerText = "...";
-
+    if(!apiKey) return;
+    
     try {
         let models = [];
-        // Provider별 모델 리스트 호출
         if (provider === 'gemini') {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-            if(!res.ok) throw new Error("Invalid Key");
             const data = await res.json();
             models = data.models.filter(m => m.supportedGenerationMethods.includes('generateContent')).map(m => m.name.replace('models/', ''));
         } else {
             const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/models' : 'https://api.openai.com/v1/models';
             const res = await fetch(baseUrl, { headers: { 'Authorization': `Bearer ${apiKey}` } });
-            if(!res.ok) throw new Error("Invalid Key");
             const data = await res.json();
             models = data.data.map(m => m.id).sort();
         }
-
         select.innerHTML = '';
-        models.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.innerText = m;
-            select.appendChild(opt);
-        });
-
-        // 저장된 모델 복구
+        models.forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.innerText = m; select.appendChild(opt); });
         const saved = localStorage.getItem('ps_model');
-        if (saved && models.includes(saved)) select.value = saved;
-
-        if (!isAutoLoad) btn.innerText = "Success";
-
-    } catch (e) {
-        console.error(e);
-        if (!isAutoLoad) {
-            btn.innerText = "Failed";
-            alert("Connection Failed. Check Key/Provider.");
-        }
-    }
+        if(saved && models.includes(saved)) select.value = saved;
+    } catch(e) { console.error(e); }
 }
