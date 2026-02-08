@@ -81,7 +81,7 @@ function goToStep(step) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [4] 페르소나 생성 (핵심: 질문 쪼개기 전략)                                  */
+/* [4] 페르소나 생성 (Meta-Prompting: The Format Enforcer)                    */
 /* -------------------------------------------------------------------------- */
 
 async function generatePersonas() {
@@ -92,31 +92,42 @@ async function generatePersonas() {
     goToStep(3);
     document.getElementById('loader').classList.remove('hidden');
 
-    // 🔥 핵심 변경: 질문을 한 번에 하나씩만 하도록(Persona Constraints) 강력하게 지시
+    // 🔥 핵심 변경: 페르소나들이 따라야 할 '황금 포맷'을 정의해줍니다.
     const prompt = `
     You are a Meta-Prompt Engineer.
     User Role: ${state.role.label}
     User Goal: ${state.task}
 
-    Create 3 personas that will interview the user to build a perfect prompt.
+    Create 3 personas that will interview the user to build a **Structured Markdown Prompt**.
     
-    CRITICAL CONSTRAINT: 
-    The personas must use a **"Step-by-Step Interview"** method.
-    They must NEVER ask multiple questions at once.
-    They must ask **ONE** single question per turn to gather requirements (e.g., Context -> Audience -> Format -> Constraints).
+    TARGET OUTPUT FORMAT (Must follow this exactly):
+    # Role
+    [Define the AI's role]
+    # Context
+    [Background info]
+    # Key Performance Indicators (Target)
+    [Specific metrics if applicable]
+    # Task
+    [Specific instruction]
+    # Output Format (Required)
+    [Table, Script, List, etc.]
+    # Constraints
+    [Tone, Dos and Don'ts]
+    # Input Data (Example)
+    [Placeholder for user data]
 
     Strategies:
-    1. "The Sequential Builder": Starts with context, then moves to audience, then format. Very linear.
-    2. "The Minimalist": Asks only the most critical missing piece of information. Short and direct.
-    3. "The Socratic Partner": Asks "Why" or "How" to clarify intent before writing the prompt.
+    1. "The Structuralist": Fills in the sections one by one strictly.
+    2. "The Agile Coach": Asks for the main goal first, then refines the KPIs and constraints.
+    3. "The Detail Miner": Focuses heavily on "Constraints" and "Output Format" to avoid errors.
 
     Output JSON Only:
     [
         {
             "title": "Persona Name",
-            "description": "How they interview (e.g., One question at a time)",
-            "system_instruction": "You are [Persona]. You are building a prompt for the user's task: '${state.task}'. \n\nRULES:\n1. Ask EXACTLY ONE question at a time.\n2. Wait for the user's answer before asking the next.\n3. After every answer, update the Draft Prompt in a code block.\n4. Do NOT overwhelm the user.",
-            "first_message": "Hello! To make this prompt perfect, I need to ask you a few questions one by one. First, who is the **target audience** for this result?"
+            "description": "Approach description",
+            "system_instruction": "You are [Persona]. Interview the user to fill in the sections: Role, Context, KPI, Task, Format, Constraints. ALWAYS output the final result in the Markdown format provided.",
+            "first_message": "Hello! Let's build your prompt. First, what specific **Role** should the AI adopt, and what is the **Core Context**?"
         }
     ]
     `;
@@ -154,20 +165,46 @@ function renderPersonas() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [5] 채팅 엔진 (Sequential Interview Loop)                                  */
+/* [5] 채팅 엔진 (Strict Format Enforcement)                                  */
 /* -------------------------------------------------------------------------- */
 
 function startChat(idx) {
     state.selectedPersona = state.personas[idx];
     goToStep(4);
 
+    // 🔥 시스템 프롬프트: 사용자가 원하는 마크다운 형식을 강제 (Hard Constraint)
+    const strictSystemPrompt = `
+    ${state.selectedPersona.system_instruction}
+
+    [CRITICAL RULE FOR OUTPUT]
+    Whenever you generate the prompt draft, you MUST use the following Markdown structure inside a code block ( \`\`\`markdown ... \`\`\` ):
+
+    # Role
+    (Role Description)
+
+    # Context
+    (Context Description)
+
+    # Key Performance Indicators (Target)
+    (List of metrics/targets if applicable)
+
+    # Task
+    (The specific instruction)
+
+    # Output Format (Required)
+    (Specific tables, lists, or formats)
+
+    # Constraints
+    (Rules, tone, emojis, etc.)
+
+    # Input Data (Example)
+    (Placeholders for data)
+
+    Do NOT use JSON. Do NOT use plain text summaries. Use strictly the Markdown format above.
+    `;
+
     state.chatMessages = [
-        { 
-            role: "system", 
-            // 시스템 프롬프트에 '절대 규칙' 박아넣기
-            content: state.selectedPersona.system_instruction + 
-            "\n\n[GLOBAL RULES]\n1. Ask ONLY ONE question per turn.\n2. Do NOT list multiple questions.\n3. If you have enough info, output the final prompt inside ```prompt\n...\n```.\n4. Keep your chat messages short and conversational." 
-        }
+        { role: "system", content: strictSystemPrompt }
     ];
     document.getElementById('chatHistory').innerHTML = '';
     
@@ -192,16 +229,14 @@ async function sendMessage() {
         addMessageToUI("assistant", aiResponse);
         state.chatMessages.push({ role: "assistant", content: aiResponse });
 
-        // 프롬프트 코드 블록(```prompt)이 보이면 자동 시뮬레이션
-        const codeBlockRegex = /```(?:prompt|markdown)?\n([\s\S]*?)```/;
+        // 🔥 마크다운 코드 블록 추출
+        const codeBlockRegex = /```(?:markdown|prompt)?\n([\s\S]*?)```/;
         const match = aiResponse.match(codeBlockRegex);
 
         if (match && match[1]) {
             state.latestPrompt = match[1];
-            runSimulation(match[1]); // 시뮬레이션 실행
-        } else {
-            // 아직 완성 안 됐으면, 현재까지 파악한 내용으로 '임시 미리보기'라도 보여줄 수 있음 (옵션)
-            // 여기선 완성될 때까지 시뮬레이션 대기
+            // 추출된 프롬프트로 시뮬레이션 실행
+            runSimulation(match[1]); 
         }
 
     } catch (e) {
@@ -221,9 +256,11 @@ function addMessageToUI(role, text, isTemp = false) {
     }`;
 
     if (role === 'assistant' && !isTemp) {
-        // 프롬프트 코드는 채팅창에서 너무 길 수 있으니 'Click to Preview' 같은 느낌으로 축약 가능하지만
-        // 일단은 그대로 보여주되, 사용자가 읽기 편하게
-        bubble.innerHTML = marked.parse(text);
+        // 채팅창에서는 긴 프롬프트 코드는 접어서 보여줌 (가독성)
+        const display = text.replace(/```(?:markdown|prompt)?\n([\s\S]*?)```/g, 
+            '<div class="bg-indigo-50 border border-indigo-200 p-3 rounded-lg text-xs text-indigo-700 cursor-help" title="Check the Preview Panel on the right"><i class="fa-solid fa-code"></i> Prompt Updated (View on Right Panel)</div>'
+        );
+        bubble.innerHTML = marked.parse(display);
     } else if (isTemp) {
         bubble.innerHTML = `<div class="typing-indicator flex gap-1 p-1"><span></span><span></span><span></span></div>`;
     } else {
@@ -238,55 +275,71 @@ function addMessageToUI(role, text, isTemp = false) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* [6] 시뮬레이션 엔진                                                        */
+/* [6] 시뮬레이션 및 프리뷰 엔진                                              */
 /* -------------------------------------------------------------------------- */
 
 async function runSimulation(promptCode) {
     const container = document.getElementById('previewContainer');
     
-    // 로딩 표시
+    // 1. 프롬프트 원본 보여주기 (상단) + 시뮬레이션 로딩 (하단)
+    // 사용자가 '결과물'을 복사할 수 있도록 프롬프트 코드를 렌더링
     container.innerHTML = `
-        <div class="flex flex-col items-center justify-center h-full text-indigo-500 fade-in">
-            <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
-            <p class="font-bold">Running Simulation...</p>
-            <p class="text-xs text-slate-400 mt-2">Generating sample output from your prompt</p>
+        <div class="fade-in space-y-6">
+            
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Generated Prompt</span>
+                    <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-400">Target: Internal AI</span>
+                </div>
+                <div class="bg-slate-800 text-slate-200 p-4 rounded-lg font-mono text-xs overflow-x-auto whitespace-pre leading-relaxed shadow-inner border border-slate-700">
+${promptCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                </div>
+            </div>
+
+            <div id="simulationResultArea">
+                <div class="flex flex-col items-center justify-center py-8 text-indigo-500">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2"></i>
+                    <p class="text-xs font-bold">Simulating Output...</p>
+                </div>
+            </div>
         </div>
     `;
 
     try {
-        // 시뮬레이션 실행 (2차 호출)
+        // 2. 시뮬레이션 실행 (AI에게 프롬프트 던지기)
         const simulationResult = await callChat([
-            { role: "system", content: "You are the internal corporate AI. Follow the user's prompt exactly." },
+            { role: "system", content: "You are the internal corporate AI. Execute the user's prompt faithfully and professionally." },
             { role: "user", content: promptCode }
         ]);
 
         state.latestSimulation = simulationResult;
 
-        // 결과 렌더링
-        container.innerHTML = `
-            <div class="fade-in">
-                <div class="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-800 flex items-center justify-between">
-                    <span class="flex items-center gap-2"><i class="fa-solid fa-flask"></i> <strong>Simulation Output</strong></span>
-                    <span class="text-[10px] opacity-70">Generated by ${localStorage.getItem('ps_model') || 'AI'}</span>
+        // 3. 시뮬레이션 결과 렌더링
+        const simArea = document.getElementById('simulationResultArea');
+        simArea.innerHTML = `
+            <div class="border-t pt-4">
+                <div class="mb-3 flex items-center gap-2">
+                    <span class="text-xs font-bold text-indigo-600 uppercase">Simulation Output</span>
+                    <span class="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded">Preview</span>
                 </div>
-                <div class="prose prose-sm max-w-none text-slate-700">
+                <div class="prose prose-sm max-w-none text-slate-700 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                     ${marked.parse(simulationResult)}
                 </div>
             </div>
         `;
 
     } catch (e) {
-        container.innerHTML = `<div class="text-red-500 p-4">Simulation Failed: ${e.message}</div>`;
+        document.getElementById('simulationResultArea').innerHTML = `<div class="text-red-500 text-xs">Simulation Failed: ${e.message}</div>`;
     }
 }
 
 function copyPromptCode() {
-    if (!state.latestPrompt) return alert("No prompt generated yet. Keep chatting!");
+    if (!state.latestPrompt) return alert("No prompt generated yet.");
     
     navigator.clipboard.writeText(state.latestPrompt).then(() => {
         const btn = document.getElementById('copyPreviewBtn');
         const originalText = btn.innerText;
-        btn.innerText = "Copied! ✅";
+        btn.innerText = "Prompt Copied! ✅";
         btn.classList.add("bg-green-50", "text-green-600", "border-green-200");
         setTimeout(() => {
             btn.innerText = originalText;
@@ -328,8 +381,8 @@ async function callChat(messages, isJson = false) {
         return data.candidates[0].content.parts[0].text;
     } else {
         const baseUrl = provider === 'groq' 
-            ? '[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)' 
-            : '[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)';
+            ? 'https://api.groq.com/openai/v1/chat/completions' 
+            : 'https://api.openai.com/v1/chat/completions';
         const res = await fetch(baseUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
@@ -389,7 +442,7 @@ async function fetchModels(isAuto) {
             const data = await res.json();
             models = data.models.filter(m => m.supportedGenerationMethods.includes('generateContent')).map(m => m.name.replace('models/', ''));
         } else {
-            const baseUrl = provider === 'groq' ? '[https://api.groq.com/openai/v1/models](https://api.groq.com/openai/v1/models)' : '[https://api.openai.com/v1/models](https://api.openai.com/v1/models)';
+            const baseUrl = provider === 'groq' ? 'https://api.groq.com/openai/v1/models' : 'https://api.openai.com/v1/models';
             const res = await fetch(baseUrl, { headers: { 'Authorization': `Bearer ${apiKey}` } });
             const data = await res.json();
             models = data.data.map(m => m.id).sort();
