@@ -1,0 +1,165 @@
+/* 1. 기본 폰트 및 설정 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 2. 커스텀 스크롤바 (Slate & Indigo 테마) */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* Slate-300 */
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* Slate-400 */
+}
+
+/* 3. 애니메이션 유틸리티 */
+.fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; /* 부드러운 감속 효과 */
+    opacity: 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 4. 마크다운 프리뷰 스타일링 (.prose) */
+/* Marked.js가 변환한 HTML 태그들을 예쁘게 꾸며줍니다. */
+
+.prose {
+    line-height: 1.6;
+    color: #334155; /* Slate-700 */
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+    color: #1e293b; /* Slate-800 */
+    font-weight: 700;
+    margin-top: 1.5em;
+    margin-bottom: 0.75em;
+}
+
+.prose h1 { font-size: 1.5rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
+.prose h2 { font-size: 1.25rem; }
+.prose h3 { font-size: 1.1rem; }
+
+.prose p {
+    margin-bottom: 1em;
+}
+
+.prose ul, .prose ol {
+    margin-bottom: 1em;
+    padding-left: 1.5em;
+}
+
+.prose ul { list-style-type: disc; }
+.prose ol { list-style-type: decimal; }
+
+.prose li {
+    margin-bottom: 0.25em;
+}
+
+.prose strong {
+    font-weight: 600;
+    color: #0f172a; /* Slate-900 */
+}
+
+.prose blockquote {
+    border-left: 4px solid #6366f1; /* Indigo-500 */
+    padding-left: 1em;
+    color: #64748b; /* Slate-500 */
+    font-style: italic;
+    margin: 1.5em 0;
+    background: #f8fafc;
+    padding: 1em;
+    border-radius: 0 0.5em 0.5em 0;
+}
+
+.prose code {
+    background-color: #f1f5f9; /* Slate-100 */
+    padding: 0.2em 0.4em;
+    border-radius: 0.25em;
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #db2777; /* Pink-600 */
+}
+
+.prose pre {
+    background-color: #1e293b; /* Slate-800 */
+    color: #f8fafc; /* Slate-50 */
+    padding: 1em;
+    border-radius: 0.5em;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.prose pre code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+/* 5. 테이블 스타일링 (보고서용) */
+.prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5em 0;
+    font-size: 0.9em;
+}
+
+.prose th {
+    background-color: #f1f5f9; /* Slate-100 */
+    font-weight: 600;
+    text-align: left;
+    padding: 0.75em;
+    border: 1px solid #cbd5e1; /* Slate-300 */
+}
+
+.prose td {
+    padding: 0.75em;
+    border: 1px solid #e2e8f0; /* Slate-200 */
+}
+
+.prose tr:nth-child(even) {
+    background-color: #f8fafc; /* Slate-50 */
+}
+
+/* 6. 로딩 애니메이션 (채팅창 점 3개) */
+.typing-indicator span {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    background-color: #94a3b8;
+    border-radius: 50%;
+    animation: typing 1s infinite ease-in-out;
+    margin: 0 1px;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
