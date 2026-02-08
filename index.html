@@ -3,22 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PromptSister - Co-Pilot Edition</title>
+    <title>PromptSister - Enterprise Co-Pilot</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .prose table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-        .prose th, .prose td { border: 1px solid #e2e8f0; padding: 0.5em; text-align: left; }
-        .prose th { background-color: #f8fafc; }
-    </style>
+
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
 
@@ -28,10 +19,10 @@
                 <i class="fa-solid fa-robot text-xl text-white"></i>
             </div>
             <div>
-                <h1 class="text-lg font-bold leading-tight">PromptSister <span class="text-indigo-400 text-xs font-normal">v4.0 Co-Pilot</span></h1>
+                <h1 class="text-lg font-bold leading-tight">PromptSister <span class="text-indigo-400 text-xs font-normal">v4.1 Enterprise</span></h1>
             </div>
         </div>
-        <button onclick="toggleSettings()" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm border border-slate-700 transition flex items-center gap-2">
+        <button id="settingsBtn" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm border border-slate-700 transition flex items-center gap-2">
             <i class="fa-solid fa-gear"></i> API Settings
         </button>
     </nav>
@@ -42,7 +33,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Provider</label>
-                    <select id="apiProvider" class="w-full p-2 border rounded" onchange="resetModelList()">
+                    <select id="apiProvider" class="w-full p-2 border rounded">
                         <option value="groq">Groq (Recommended)</option>
                         <option value="openai">OpenAI</option>
                         <option value="gemini">Gemini</option>
@@ -57,12 +48,12 @@
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Model</label>
                         <select id="modelSelect" class="w-full p-2 border rounded bg-slate-50"></select>
                     </div>
-                    <button onclick="fetchModels()" class="bg-indigo-100 text-indigo-700 px-3 py-2 rounded hover:bg-indigo-200 font-bold text-sm">Fetch</button>
+                    <button id="fetchModelsBtn" class="bg-indigo-100 text-indigo-700 px-3 py-2 rounded hover:bg-indigo-200 font-bold text-sm">Fetch</button>
                 </div>
             </div>
             <div class="mt-6 flex justify-end gap-2">
-                <button onclick="clearKeys()" class="text-red-500 text-sm px-3 hover:underline">Clear Keys</button>
-                <button onclick="saveAndClose()" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700">Save</button>
+                <button id="clearKeysBtn" class="text-red-500 text-sm px-3 hover:underline">Clear Keys</button>
+                <button id="saveSettingsBtn" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700">Save</button>
             </div>
         </div>
     </div>
@@ -72,21 +63,21 @@
         <section class="w-full md:w-5/12 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative transition-all duration-300">
             
             <div id="step-1" class="p-6 flex flex-col h-full fade-in">
-                <h2 class="text-xl font-bold mb-4">Step 1. Select Role</h2>
+                <h2 class="text-xl font-bold mb-4">Step 1. Select Your Role</h2>
                 <div class="grid grid-cols-2 gap-3 overflow-y-auto" id="roleGrid"></div>
             </div>
 
             <div id="step-2" class="hidden p-6 flex-col h-full fade-in">
-                <button onclick="goToStep(1)" class="text-slate-400 text-xs mb-4 hover:text-indigo-600"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <button id="backToStep1" class="text-slate-400 text-xs mb-4 hover:text-indigo-600 self-start"><i class="fa-solid fa-arrow-left"></i> Back</button>
                 <h2 class="text-xl font-bold mb-2">Step 2. Define Goal</h2>
-                <textarea id="taskInput" class="w-full h-32 p-4 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none mb-4" placeholder="e.g., I need a weekly performance tracking system for my Sales team."></textarea>
-                <button onclick="generatePersonas()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow hover:bg-indigo-700 flex justify-center items-center gap-2">
+                <textarea id="taskInput" class="w-full h-32 p-4 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none mb-4" placeholder="e.g., I need a performance review template for my team."></textarea>
+                <button id="generatePersonasBtn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow hover:bg-indigo-700 flex justify-center items-center gap-2">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> Find Co-Pilot Personas
                 </button>
             </div>
 
             <div id="step-3" class="hidden p-6 flex-col h-full fade-in relative">
-                <button onclick="goToStep(2)" class="text-slate-400 text-xs mb-4 hover:text-indigo-600"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <button id="backToStep2" class="text-slate-400 text-xs mb-4 hover:text-indigo-600 self-start"><i class="fa-solid fa-arrow-left"></i> Back</button>
                 <h2 class="text-xl font-bold mb-2">Step 3. Choose your Co-Pilot</h2>
                 <p class="text-sm text-slate-500 mb-4">Select the AI style that fits your workflow.</p>
                 
@@ -109,16 +100,15 @@
                             <p class="text-[10px] text-slate-500">The AI will ask questions to refine your result.</p>
                         </div>
                     </div>
-                    <button onclick="restart()" class="text-xs text-slate-400 hover:text-red-500">Restart</button>
+                    <button id="restartBtn" class="text-xs text-slate-400 hover:text-red-500">Restart</button>
                 </div>
 
-                <div id="chatHistory" class="flex-grow overflow-y-auto p-4 space-y-4">
-                    </div>
+                <div id="chatHistory" class="flex-grow overflow-y-auto p-4 space-y-4"></div>
 
                 <div class="p-4 bg-white border-t">
                     <div class="flex gap-2">
                         <textarea id="chatInput" rows="1" class="flex-grow p-3 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Type your answer or feedback..."></textarea>
-                        <button onclick="sendMessage()" class="bg-indigo-600 text-white px-4 rounded-xl hover:bg-indigo-700 transition">
+                        <button id="sendMessageBtn" class="bg-indigo-600 text-white px-4 rounded-xl hover:bg-indigo-700 transition">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>
                     </div>
@@ -136,7 +126,7 @@
                 <span class="font-bold text-indigo-900 flex items-center gap-2">
                     <i class="fa-solid fa-file-lines"></i> Live Deliverable Preview
                 </span>
-                <button onclick="copyPreview()" class="text-xs bg-white text-indigo-600 border border-indigo-200 px-3 py-1 rounded hover:bg-indigo-100 font-bold">
+                <button id="copyPreviewBtn" class="text-xs bg-white text-indigo-600 border border-indigo-200 px-3 py-1 rounded hover:bg-indigo-100 font-bold">
                     Copy Content
                 </button>
             </div>
@@ -151,292 +141,6 @@
 
     </main>
 
-    <script>
-        /* --- 1. State & Data --- */
-        const roles = [
-            { id: "HR", label: "HR Manager", icon: "fa-user-tie" },
-            { id: "Sales", label: "Sales Lead", icon: "fa-chart-line" },
-            { id: "Dev", label: "Tech Lead", icon: "fa-code" },
-            { id: "PM", label: "Product Manager", icon: "fa-clipboard-check" },
-            { id: "Marketing", label: "Marketer", icon: "fa-bullhorn" }
-        ];
-
-        let state = {
-            step: 1, role: null, task: null, 
-            personas: [], selectedPersona: null,
-            chatMessages: [], // Stores conversation history
-            latestPreview: ""
-        };
-
-        document.addEventListener("DOMContentLoaded", () => {
-            renderRoles();
-            loadSettings();
-            
-            // Enter key for chat
-            document.getElementById('chatInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-        });
-
-        /* --- 2. Wizard UI --- */
-        function renderRoles() {
-            document.getElementById('roleGrid').innerHTML = roles.map(r => `
-                <div onclick="selectRole('${r.id}')" class="cursor-pointer border p-4 rounded-xl hover:bg-indigo-50 hover:border-indigo-500 transition flex flex-col items-center gap-2">
-                    <i class="fa-solid ${r.icon} text-2xl text-slate-400"></i>
-                    <span class="font-bold text-sm text-slate-600">${r.label}</span>
-                </div>
-            `).join('');
-        }
-
-        function selectRole(id) {
-            state.role = roles.find(r => r.id === id);
-            goToStep(2);
-        }
-
-        function goToStep(step) {
-            [1,2,3,4].forEach(i => document.getElementById(`step-${i}`).classList.add('hidden'));
-            document.getElementById(`step-${step}`).classList.remove('hidden');
-        }
-
-        /* --- 3. Persona Generation (The "Setup") --- */
-        async function generatePersonas() {
-            const task = document.getElementById('taskInput').value;
-            if(!task) return alert("Please enter a task.");
-            state.task = task;
-            goToStep(3);
-            
-            document.getElementById('loader').classList.remove('hidden');
-            
-            // Meta-Prompt to create "Iterative Agents"
-            const prompt = `
-            You are a system architect. User Role: ${state.role.label}. Task: ${state.task}.
-            Create 3 distinct "Co-Pilot Personas" to help the user complete this task interactively.
-            
-            Each persona must have a specific strategy:
-            1. "The Socratic Planner": Asks broad strategic questions first.
-            2. "The Agile Drafter": Creates a quick dirty draft, then asks for refinement.
-            3. "The Detail Detective": Asks for specific metrics/KPIs one by one.
-
-            Output JSON Array only:
-            [
-                {
-                    "title": "Persona Name",
-                    "description": "How it works",
-                    "system_instruction": "You are [Role]. Your goal is to [Task]. Do NOT output the final result immediately. Start by asking...",
-                    "first_message": "Hello! To get started, I need to know..."
-                }
-            ]
-            `;
-
-            try {
-                const res = await callLLM(prompt, true); // true = One-shot JSON
-                const json = JSON.parse(res.replace(/```json|```/g, ''));
-                state.personas = json;
-                
-                document.getElementById('personaList').innerHTML = json.map((p, i) => `
-                    <div onclick="startChat(${i})" class="p-4 border rounded-xl hover:border-indigo-500 hover:bg-indigo-50 cursor-pointer transition">
-                        <h3 class="font-bold text-indigo-700 mb-1">${p.title}</h3>
-                        <p class="text-xs text-slate-600">${p.description}</p>
-                    </div>
-                `).join('');
-            } catch(e) {
-                console.error(e);
-                alert("Error generating personas. Try again.");
-                goToStep(2);
-            } finally {
-                document.getElementById('loader').classList.add('hidden');
-            }
-        }
-
-        /* --- 4. Chat Engine (The "Loop") --- */
-        function startChat(idx) {
-            state.selectedPersona = state.personas[idx];
-            goToStep(4);
-            
-            // Reset chat
-            state.chatMessages = [
-                { role: "system", content: state.selectedPersona.system_instruction + " IMPORTANT: If you generate a draft/code/table, wrap it in a markdown block like ```markdown ... ``` or ```csv ... ``` so I can extract it for the preview." }
-            ];
-            document.getElementById('chatHistory').innerHTML = '';
-            
-            // Add First Message from AI
-            addMessageToUI("assistant", state.selectedPersona.first_message);
-            state.chatMessages.push({ role: "assistant", content: state.selectedPersona.first_message });
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            if(!text) return;
-            
-            // PII Masking
-            let safeText = maskPII(text);
-            
-            // User UI
-            addMessageToUI("user", safeText);
-            state.chatMessages.push({ role: "user", content: safeText });
-            input.value = '';
-
-            // Loading UI
-            const loadingId = addMessageToUI("assistant", "Thinking...", true);
-
-            try {
-                // Call AI with History
-                const aiResponse = await callChat(state.chatMessages);
-                
-                // Remove Loading
-                document.getElementById(loadingId).remove();
-                
-                // Add AI UI
-                addMessageToUI("assistant", aiResponse);
-                state.chatMessages.push({ role: "assistant", content: aiResponse });
-
-                // Extract Preview (if any markdown code block exists)
-                extractPreview(aiResponse);
-
-            } catch(e) {
-                document.getElementById(loadingId).innerText = "Error: " + e.message;
-            }
-        }
-
-        function addMessageToUI(role, text, isTemp=false) {
-            const div = document.createElement('div');
-            const id = 'msg-' + Date.now();
-            div.id = id;
-            div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
-            
-            const bubble = document.createElement('div');
-            bubble.className = `max-w-[85%] p-3 rounded-2xl text-sm ${role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border text-slate-700 rounded-bl-none shadow-sm'}`;
-            
-            // Simple Markdown parsing for chat
-            if(role === 'assistant' && !isTemp) {
-                bubble.innerHTML = marked.parse(text);
-            } else {
-                bubble.innerText = text;
-            }
-            
-            div.appendChild(bubble);
-            document.getElementById('chatHistory').appendChild(div);
-            document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
-            return id;
-        }
-
-        /* --- 5. Preview Logic --- */
-        function extractPreview(response) {
-            // Look for content between ``` blocks
-            const match = response.match(/```(?:\w+)?\n([\s\S]*?)```/);
-            if (match && match[1]) {
-                const content = match[1];
-                // Unmask PII for preview if needed (simplified here)
-                state.latestPreview = content;
-                document.getElementById('previewContainer').innerHTML = marked.parse(content);
-            } else {
-                // If no code block, maybe just show the whole text if it looks like a draft
-                if (response.length > 200 && (response.includes("Draft") || response.includes("Plan"))) {
-                     state.latestPreview = response;
-                     document.getElementById('previewContainer').innerHTML = marked.parse(response);
-                }
-            }
-        }
-        
-        function copyPreview() {
-            if(!state.latestPreview) return alert("Nothing to copy yet.");
-            navigator.clipboard.writeText(state.latestPreview).then(() => alert("Preview copied!"));
-        }
-
-        /* --- 6. Utilities (API, PII) --- */
-        function maskPII(text) {
-            // Simple regex for email/phone
-            return text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[EMAIL]")
-                       .replace(/\d{3}-\d{3,4}-\d{4}/g, "[PHONE]");
-        }
-
-        async function callLLM(prompt, isJson) {
-            // Re-using the single-shot call logic for Persona generation
-            const msgs = [{role: "system", content: "You are a JSON generator."}, {role: "user", content: prompt}];
-            return await callChat(msgs, isJson);
-        }
-
-        async function callChat(messages, isJson=false) {
-            const key = localStorage.getItem('ps_apiKey');
-            const provider = localStorage.getItem('ps_provider') || 'groq';
-            const model = localStorage.getItem('ps_model') || 'gpt-3.5-turbo';
-            
-            if(!key) throw new Error("API Key missing");
-
-            if(provider === 'gemini') {
-                // Flatten messages for Gemini single-turn (simplified) or multi-turn
-                // Gemini API structure is different, mapping simplified for this demo
-                const contents = messages.map(m => ({
-                    role: m.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: m.content }]
-                }));
-                
-                // Gemini system prompt workaround
-                if(messages[0].role === 'system') {
-                    contents.shift(); // Remove system from parts
-                    // In beta, system_instruction is available, but keeping simple:
-                    contents[0].parts[0].text = messages[0].content + "\n\n" + contents[0].parts[0].text;
-                }
-
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ contents: contents })
-                });
-                const data = await res.json();
-                return data.candidates[0].content.parts[0].text;
-            } else {
-                // OpenAI / Groq standard
-                const baseUrl = provider === 'groq' ? '[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)' : '[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)';
-                
-                const res = await fetch(baseUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: model,
-                        messages: messages,
-                        temperature: 0.7,
-                        response_format: isJson ? { type: "json_object" } : undefined
-                    })
-                });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error.message);
-                return data.choices[0].message.content;
-            }
-        }
-
-        /* --- Settings Logic (Same as before) --- */
-        function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('hidden'); }
-        function loadSettings() { 
-            const k = localStorage.getItem('ps_apiKey');
-            if(k) { document.getElementById('apiKey').value = k; fetchModels(); }
-            else toggleSettings();
-        }
-        function saveAndClose() {
-            localStorage.setItem('ps_apiKey', document.getElementById('apiKey').value);
-            localStorage.setItem('ps_provider', document.getElementById('apiProvider').value);
-            localStorage.setItem('ps_model', document.getElementById('modelSelect').value);
-            toggleSettings();
-        }
-        function clearKeys() { localStorage.clear(); location.reload(); }
-        async function fetchModels() {
-            // (Use existing logic from v3 code, simplified for brevity here)
-            // Just populate #modelSelect based on #apiProvider
-             const provider = document.getElementById('apiProvider').value;
-             const select = document.getElementById('modelSelect');
-             select.innerHTML = '<option>Loading...</option>';
-             // Mock for demo if no key, else real fetch
-             setTimeout(() => {
-                 if(provider === 'groq') select.innerHTML = '<option value="llama3-70b-8192">Llama3-70b</option><option value="mixtral-8x7b-32768">Mixtral</option>';
-                 else if(provider === 'openai') select.innerHTML = '<option value="gpt-4o">GPT-4o</option><option value="gpt-3.5-turbo">GPT-3.5</option>';
-                 else select.innerHTML = '<option value="gemini-1.5-flash">Gemini Flash</option>';
-             }, 500);
-        }
-        function restart() { location.reload(); }
-
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
